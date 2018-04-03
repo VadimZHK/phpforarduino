@@ -8,7 +8,7 @@
 // Массив $DATA["x"] содержит подписи по оси "X"
 
 $DATA=Array();
-for ($i=0;$i<20;$i++) {
+for ($i=0;$i<24;$i++) {
     $DATA[0][]=rand(0,100);
     $DATA[1][]=rand(0,100)/2;
     $DATA[2][]=rand(0,100)/3;
@@ -102,12 +102,12 @@ $bg[2]=imagecolorallocate($im,212,212,212);
 $c=imagecolorallocate($im,184,184,184);
 
 // Цвет текста (темно-серый)
-$text=imagecolorallocate($im,136,136,136);
+$cl_text=imagecolorallocate($im,136,136,136);
 
 // Цвета для линий графиков
-$bar[2]=imagecolorallocate($im,191,65,170);
-$bar[0]=imagecolorallocate($im,161,155,0);
-$bar[1]=imagecolorallocate($im,65,170,191);
+$cl_bar[2]=imagecolorallocate($im,191,65,170);
+$cl_bar[0]=imagecolorallocate($im,161,155,0);
+$cl_bar[1]=imagecolorallocate($im,65,170,191);
 
 $text_width=0;
 // Вывод подписей по оси Y
@@ -138,7 +138,7 @@ imagerectangle($im, $X0, $Y0, $X0+$RW, $Y0-$RH, $c);
 for ($i=1;$i<=$county;$i++) {
     $y=$Y0-$step*$i;
     imageline($im,$X0,$y,$X0+$RW,$y,$c);
-    imageline($im,$X0,$y,$X0-($ML-$text_width)/4,$y,$text);
+    imageline($im,$X0,$y,$X0-($ML-$text_width)/4,$y,$cl_text);
     }
 
 // Вывод сетки по оси X
@@ -149,7 +149,7 @@ for ($i=0;$i<$count;$i++) {
     }
 
 // Вывод линий графика
-$dx=($RW/$count)/2;
+$dx=($RW/$count)/2 - $X0;
 
 $pi=$Y0-($RH/$max*$DATA[0][0]);
 $po=$Y0-($RH/$max*$DATA[1][0]);
@@ -160,15 +160,15 @@ for ($i=1;$i<$count;$i++) {
     $x=intval($X0+$i*($RW/$count)+$dx);
 
     $y=$Y0-($RH/$max*$DATA[0][$i]);
-    imageline($im,$px,$pi,$x,$y,$bar[0]);
+    imageline($im,$px,$pi,$x,$y,$cl_bar[0]);
     $pi=$y;
 
     $y=$Y0-($RH/$max*$DATA[1][$i]);
-    imageline($im,$px,$po,$x,$y,$bar[1]);
+    imageline($im,$px,$po,$x,$y,$cl_bar[1]);
     $po=$y;
 
     $y=$Y0-($RH/$max*$DATA[2][$i]);
-    imageline($im,$px,$pu,$x,$y,$bar[2]);
+    imageline($im,$px,$pu,$x,$y,$cl_bar[2]);
     $pu=$y;
     $px=$x;
     }
@@ -180,7 +180,7 @@ $ML-=$text_width;
 for ($i=1;$i<=$county;$i++) {
     $str=($max/$county)*$i;
     imagestring($im,2, $X0-strlen($str)*$LW-$ML/4-2,$Y0-$step*$i-
-                       imagefontheight(2)/2,$str,$text);
+                       imagefontheight(2)/2,$str,$cl_text);
     }
 
 // Вывод подписей по оси X
@@ -190,21 +190,22 @@ $i=$X0+$RW;
 
 while ($i>$X0) {
     if ($prev-$twidth>$i) {
-        $drawx=$i-($RW/$count)/2;
+        $drawx=$i-($RW/$count)/2 - $X0;
         if ($drawx>$X0) {
             $str=$DATA["x"][round(($i-$X0)/($RW/$count))-1];//."sec";
-            imageline($im,$drawx,$Y0,$i-($RW/$count)/2,$Y0+5,$text);
-            imagestring($im,2, $drawx-(strlen($str)*$LW)/2, $Y0+7,$str,$text);
+            imageline($im,$drawx,$Y0,$i-($RW/$count)/2- $X0,$Y0+5,$cl_text);
+            imagestring($im,2,$drawx-(strlen($str)*$LW)/2, $Y0+7,$str,$cl_text);
             }
         $prev=$i;
         }
     $i-=$RW/$count;
     }
+imagestring($im,2,$H / 2, $H / 2,"text RW $RW W $W X0 $X0 DATA[x] ". $DATA['x'][1],$cl_bar[2]);
 
 header("Content-Type: image/png; charset=utf-8");
 
 // Генерация изображения
 ImagePNG($im);
 
-//imagedestroy($im);
+imagedestroy($im);
 ?>
