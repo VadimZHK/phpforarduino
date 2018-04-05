@@ -90,4 +90,5 @@
     //Отдаем полученный график браузеру, меняя заголовок файла
     header ("Content-type: image/png; charset=utf-8");	
     ImagePng ($im);
+	imagedestroy($im);
 ?>

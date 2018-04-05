@@ -48,6 +48,7 @@
   function loadfont( $fontpath , $orient=0)
   {
      $fid = array();
+	 
      // пытаемся считать таблицу размеров символов
      $fsize = filesize( $fontpath.".wid" );
      $wf = @fopen( $fontpath.".wid", "rb");
@@ -55,8 +56,6 @@
         $wid = fread($wf, $fsize);
         fclose($wf);
         $wid = preg_split('[\,]', $wid);
-//print("loadfont");
-//exit;
         // пытаемся считать изображения символов
         $im = imagecreatefrompng( $fontpath.".png" );
         imagecolortransparent($im, imagecolorallocate($im, 255, 255, 255));

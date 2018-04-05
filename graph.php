@@ -1,4 +1,6 @@
 <?php
+include "check.php";  //Был ли введен пароль
+include "Connect.php";//Откроем базу
 // Задаем входные данные ############################################
 
 // Входные данные - три ряда, содержащие случайные данные.
@@ -7,20 +9,65 @@
 
 // Массив $DATA["x"] содержит подписи по оси "X"
 
+//массив данных
 $DATA=Array();
-for ($i=0;$i<24;$i++) {
-    $DATA[0][]=rand(0,100);
-    $DATA[1][]=rand(0,100)/2;
-    $DATA[2][]=rand(0,100)/3;
-    $DATA["x"][]=$i;
-    }
+//Возьмем данные для графика из базы
 
+$query = "select * from PR\$GETTEPM('01.05.2017 02:00:00', '02.05.2017')";
+$s = "";//для хранения предыдущего значения времени
+$i = 0;
+$tbl = ibase_query($dbcnx,$query);
+//Заполнение первых элементов массива, т.к. в запросе их может не быть
+		$DATA[1][0] = "10.00";
+		$DATA[2][0] = "10.00";
+		$DATA[3][0] = "10.00";
+		$DATA[4][0] = "10.00";
+		$DATA[5][0] = "10.00";
+//--------------------------------------------------------------------		
+		
+while ($row= ibase_fetch_row($tbl)){
+		//echo($row[0]." ".$row[1]." ".$row[2]."<br>");//alias used 
+		if ($row[0] == -1) {//отрицательные это минимальные
+			$templow = $row[1];
+			$datalow = $row[2];
+		} else if ($row[0] == -2) {//и максимальные значения
+			$temphigh = $row[1];
+			$datahigh = $row[2];	
+		} else {					//данные
+		
+			$DATA[$row[0]][]=$row[1];
+			if ($s != $row[2]){
+			$DATA["x"][]=$row[2];
+		//Проверка, все ли даненые пришли. Если нет, то заполним из предыдцщих
+		if (empty($DATA[1][$i])) $DATA[1][$i] = $DATA[1][$i-1];
+		if (empty($DATA[2][$i])) $DATA[2][$i] = $DATA[2][$i-1];
+		if (empty($DATA[3][$i])) $DATA[3][$i] = $DATA[3][$i-1];
+		if (empty($DATA[4][$i])) $DATA[4][$i] = $DATA[4][$i-1];
+		if (empty($DATA[5][$i])) $DATA[5][$i] = $DATA[5][$i-1];
+		//---------------------------------------------------------------------
+		$i++;
+			}
+			$s = $row[2];
+		}		
+	}	
+//print("\r\n".$query."\r\n");	
+//var_dump($DATA);	
+//exit;
+// Подсчитаем количество элементов (точек) на графике
+	$count = count($DATA["x"]);
+
+/*	
+$DATAHEAD=Array();//для заполнения названия мест измерения
+*/
 // Задаем изменяемые значения #######################################
 
 // Размер изображения
 
-$W=1584;
-$H=692;
+$W=$_SESSION['screen_width'];
+$H=$_SESSION['screen_height'];
+$W = $W - $W/7;
+$H = $H - $H/4;
+
 
 // Отступы
 $MB=20;  // Нижний
@@ -30,11 +77,6 @@ $M=5;    // Верхний и правый отступы.
 
 // Ширина одного символа
 $LW=imagefontwidth(2);
-
-// Подсчитаем количество элементов (точек) на графике
-$count=count($DATA[0]);
-if (count($DATA[1])>$count) $count=count($DATA[1]);
-if (count($DATA[2])>$count) $count=count($DATA[2]);
 
 if ($count==0) $count=1;
 /*
@@ -66,22 +108,24 @@ if ($_GET['smooth']==1) {
 */
 
 // Подсчитаем максимальное значение
-$max=0;
+$max=$temphigh;
 
-for ($i=0;$i<$count;$i++) {
-    $max=$max<$DATA[0][$i]?$DATA[0][$i]:$max;
-    $max=$max<$DATA[1][$i]?$DATA[1][$i]:$max;
-    $max=$max<$DATA[2][$i]?$DATA[2][$i]:$max;
-    }
-
-// Увеличим максимальное значение на 10% (для того, чтобы столбик
+// Увеличим максимальное значение на 5% (для того, чтобы столбик
 // соответствующий максимальному значение не упирался в в границу
 // графика
-$max=intval($max+($max/10));
+$max=intval(($max+10)/10)*10;
+
+$min=$templow;
+$min=intval(($min-10)/10)*10;
 
 // Количество подписей и горизонтальных линий
 // сетки по оси Y.
-$county=10;
+
+//$county=10;
+//шаг 10 градусов - вычислим количество
+$county = intval((intval($max/10)*10-intval($min/10)*10)/10);
+//print("max ".$max." min ".$min." county ".$county);
+//exit;
 
 // Работа с изображением ############################################
 //print($W."<br>");
@@ -105,9 +149,9 @@ $c=imagecolorallocate($im,184,184,184);
 $cl_text=imagecolorallocate($im,136,136,136);
 
 // Цвета для линий графиков
-$cl_bar[2]=imagecolorallocate($im,191,65,170);
 $cl_bar[0]=imagecolorallocate($im,161,155,0);
 $cl_bar[1]=imagecolorallocate($im,65,170,191);
+$cl_bar[2]=imagecolorallocate($im,191,65,170);
 
 $text_width=0;
 // Вывод подписей по оси Y
@@ -115,9 +159,8 @@ for ($i=1;$i<=$county;$i++) {
     $strl=strlen(($max/$county)*$i)*$LW;
     if ($strl>$text_width) $text_width=$strl;
     }
-
 // Подравняем левую границу с учетом ширины подписей по оси Y
-$ML+=$text_width;
+$ML += $text_width;
 
 // Посчитаем реальные размеры графика (за вычетом подписей и
 // отступов)
@@ -149,25 +192,25 @@ for ($i=0;$i<$count;$i++) {
     }
 
 // Вывод линий графика
-$dx=($RW/$count)/2 - $X0;
+$dx=0;//($RW/$count)/2 - $X0;
 
-$pi=$Y0-($RH/$max*$DATA[0][0]);
-$po=$Y0-($RH/$max*$DATA[1][0]);
-$pu=$Y0-($RH/$max*$DATA[2][0]);
+$pi=$Y0-($RH/$max*$DATA[1][0]);
+$po=$Y0-($RH/$max*$DATA[2][0]);
+$pu=$Y0-($RH/$max*$DATA[3][0]);
 $px=intval($X0+$dx);
 
 for ($i=1;$i<$count;$i++) {
     $x=intval($X0+$i*($RW/$count)+$dx);
 
-    $y=$Y0-($RH/$max*$DATA[0][$i]);
+    $y=$Y0-($RH/$max*$DATA[1][$i]);
     imageline($im,$px,$pi,$x,$y,$cl_bar[0]);
     $pi=$y;
 
-    $y=$Y0-($RH/$max*$DATA[1][$i]);
+    $y=$Y0-($RH/$max*$DATA[2][$i]);
     imageline($im,$px,$po,$x,$y,$cl_bar[1]);
     $po=$y;
 
-    $y=$Y0-($RH/$max*$DATA[2][$i]);
+    $y=$Y0-($RH/$max*$DATA[3][$i]);
     imageline($im,$px,$pu,$x,$y,$cl_bar[2]);
     $pu=$y;
     $px=$x;
@@ -179,12 +222,12 @@ $ML-=$text_width;
 // Вывод подписей по оси Y
 for ($i=1;$i<=$county;$i++) {
     $str=($max/$county)*$i;
-    imagestring($im,2, $X0-strlen($str)*$LW-$ML/4-2,$Y0-$step*$i-
-                       imagefontheight(2)/2,$str,$cl_text);
+    imagestring($im,2, $X0-strlen($str)*$LW-$ML/4-2,$Y0-$step*$i-imagefontheight(2)/2,$str,$cl_text);
+                       
     }
 
 // Вывод подписей по оси X
-$prev=100000;
+$prev=100000;// непонятнное число
 $twidth=$LW*strlen($DATA["x"][0])+6;
 $i=$X0+$RW;
 
@@ -200,6 +243,7 @@ while ($i>$X0) {
         }
     $i-=$RW/$count;
     }
+	
 imagestring($im,2,$H / 2, $H / 2,"text RW $RW W $W X0 $X0 DATA[x] ". $DATA['x'][1],$cl_bar[2]);
 
 header("Content-Type: image/png; charset=utf-8");
@@ -208,4 +252,5 @@ header("Content-Type: image/png; charset=utf-8");
 ImagePNG($im);
 
 imagedestroy($im);
+unset($DATA);
 ?>
