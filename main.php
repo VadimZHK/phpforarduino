@@ -20,7 +20,7 @@ if(isset($_SESSION['screen_width']) AND isset($_SESSION['screen_height'])){
 	<body>
 		<h1>Главная страница</h1>
 		<a href="graph.php">График</a></br>
-		<a href="cvg.php">График от google</a></br>
+		<a href="svg.php">График от google</a></br>
 		<?php
 
 ?>
